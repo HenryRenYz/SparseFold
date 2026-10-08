@@ -1,0 +1,21 @@
+# SPDX-FileCopyrightText: 2026 HenryRenYz
+# SPDX-License-Identifier: MIT
+
+# Native CPU operators require AMX/BF16 on x86 or SME on ARM, plus installed vecops.
+extends = "cpu.toml"
+[paths]
+output = "./outputs/native-cpu"
+[native]
+impl = "vecops"
+ops = ["all"]
+matmul_dispatch = false
+[runtime]
+sharding = false
+[runtime.env]
+SPARSEFOLD_EXPERIMENTAL_NATIVE_FUSION = "1"
+VECOPS_CACHE_DIR = "./cache/vecops"
+CMAKE_BUILD_PARALLEL_LEVEL = "8"
+[model]
+precompile = true
+precompile_use_real_tensors = true
+precompile_parallelism = 8

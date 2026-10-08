@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools>=77", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sparsefold"
+version = "0.1.0"
+description = "PyTorch molecular structure inference with an external AF3 input boundary"
+readme = "README.md"
+requires-python = ">=3.12"
+license = "MIT AND Apache-2.0"
+license-files = ["LICENSE", "LICENSES/Apache-2.0.txt", "THIRD_PARTY_NOTICES.md"]
+authors = [{name = "HenryRenYz"}]
+dependencies = ["torch>=2.9,<3", "numpy>=2,<3", "einops>=0.8", "absl-py>=2", "ml-dtypes>=0.5", "zstandard>=0.23", "scipy>=1.14"]
+
+[project.optional-dependencies]
+test = ["pytest>=8"]
+compare = ["biopython>=1.84", "tmtools>=0.2"]
+vecops = ["vecops[torch] @ git+https://github.com/HenryRenYz/vecops.git@f8500b9c07dec26342ac980693c53f48c2b31906"]
+
+[project.scripts]
+sparsefold = "sparsefold.cli.launcher:main"
+sparsefold-worker = "sparsefold.cli.worker:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+"sparsefold.backends.vecops.kernels" = ["resources/*.cpp", "resources/*.h", "resources/*.hpp"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"

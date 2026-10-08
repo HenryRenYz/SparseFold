@@ -1,0 +1,316 @@
+# SPDX-FileCopyrightText: 2026 HenryRenYz
+# SPDX-License-Identifier: MIT
+
+# Complete SparseFold configuration template
+#
+# Launch examples:
+#   sparsefold -c configs/template.toml
+#   sparsefold -c configs/template.toml \
+#       --input-name example --nproc 4 --numa-nodes 4-7
+#
+# Precedence, from highest to lowest:
+#   dedicated CLI options > --set > this TOML > extends parent > defaults.
+# `extends = "base.toml"` is a top-level key. Relative paths are resolved
+# against the directory containing the child configuration file.
+
+# Input JSON filename without the .json suffix. The resolved input path is
+# paths.input/input_name.json. This key may be omitted when --input-name is
+# supplied on the command line; the command-line value wins.
+input_name = "example"
+
+[paths]
+# Directory containing input JSON files.
+input = "./inputs"
+# Model parameter directory containing af3.bin.zst and related files.
+model = "./models"
+# Output root. The launcher creates one child per fold job before workers start.
+# A single-process run writes console.log there; distributed ranks write
+# console-r-<rank>.log. If the normal child is already non-empty, the complete
+# new run uses a YYYYmmdd_HHMMSS-suffixed child instead.
+output = "./outputs/template"
+# Database search root. ${DB_DIR} placeholders in [model] database paths are
+# resolved against these directories in order. Use a string for one directory
+# or an array of strings for multiple search roots.
+# database = "/path/to/databases"
+# database = ["/fast/af3-db", "/archive/af3-db"]
+# Optional reference root for sparsefold compare. A model for job
+# NAME is found at baseline/NAME/NAME_model.cif (or baseline/NAME.cif).
+# A unique case-insensitive match is also accepted.
+# baseline = "./references"
+
+[launch]
+# Processes per node. 1 is a true non-distributed run. Values greater than 1
+# initialize a process group. "numa" creates one process per selected
+# CPU-bearing NUMA node.
+nproc = 1
+# Distributed launcher: torchrun | openmpi | intelmpi | mpich.
+# It is not invoked when the global world size is one.
+launcher = "torchrun"
+# Distributed communication backend. CPU runs commonly use gloo or kutacc;
+# GPU runs commonly use nccl.
+backend = "gloo"
+# Total node count and this node's zero-based rank. Keep 1/0 for one machine.
+num_nodes = 1
+node_rank = 0
+# Rendezvous address and port, used only when the world size is greater than 1.
+master_addr = "127.0.0.1"
+master_port = 29500
+
+[affinity]
+# Process CPU/memory placement mode:
+#   none     Do not restrict process CPUs.
+#   numa     Give each local rank one CPU-bearing NUMA node.
+#   explicit Use the matching entry from compute_cpu_lists for each local rank.
+mode = "none"
+# NUMA mode rank mapping. An empty array uses all visible CPU-bearing nodes in
+# OS node-id order. --numa-nodes 6,8-9 overrides this setting.
+numa_nodes = []
+# Number of lowest-numbered physical CPUs reserved for Kutacc communication
+# workers at the beginning of each rank's NUMA-local CPU set.
+comm_workers = 0
+# OpenMP thread placement: none | spread | scatter | close.
+# none lets threads float inside the process CPU mask and is safest for JIT
+# compiler subprocesses.
+thread_pin = "none"
+# Memory policy:
+#   local         Bind allocations to the rank's local DDR NUMA node.
+#   hbm-preferred Prefer the nearest memory-only HBM node and allow spillover.
+# Keep local when using the tensor memory planner so only planner-selected data
+# consumes the limited HBM tier.
+mem_policy = "local"
+# Explicit mode CPU lists, one string per local rank. comm_cpu_lists is optional.
+compute_cpu_lists = []
+comm_cpu_lists = []
+# Explicit mode exact memory node ids, one per local rank. An empty array means
+# CPU-only binding. This option requires mem_policy="local".
+memory_node_ids = []
+
+[runtime]
+# User-space allocator: default | tcmalloc | jemalloc | mimalloc.
+# The launcher locates and preloads non-default allocators automatically.
+malloc = "default"
+# OpenMP runtime: default | intel. intel makes the launcher locate libiomp5.
+omp = "default"
+# Compute threads per process. 0 derives the value from CPU affinity.
+threads = 0
+# Enable torch.compile/Inductor for model regions marked as compilable.
+compile = false
+# Enable the project's operator/compilation caches.
+cache = true
+# Enable model tensor sharding logic, normally together with multiple ranks.
+sharding = false
+# TorchInductor cache directory.
+torchinductor_cache = "./cache/sparsefold/inductor"
+# Additional dynamic-library directories. The self-contained kutacc-for-torch
+# wheel does not require KUPL/Kutacc entries here. Add paths only for unrelated
+# libraries that RPATH and the system loader cannot find.
+ld_library_paths = []
+
+[runtime.env]
+# Extra environment variables installed before the worker starts. Values that
+# begin with ~ are expanded against the current user's home directory.
+# VECOPS_TORCH_BRIDGE_CC = "~/miniconda3/envs/af3/bin/aarch64-conda-linux-gnu-gcc"
+# VECOPS_TORCH_BRIDGE_CXX = "~/miniconda3/envs/af3/bin/aarch64-conda-linux-gnu-g++"
+# VECOPS_THREAD_POOL = "native"
+# VECOPS_NUM_THREADS = "38"
+# VECOPS_NATIVE_THREAD_POOL_OPS = "sparsefold_native::diffusion_*"
+# Active-region fusion is experimental for dynamic denoising shapes.
+# VECOPS_NATIVE_ACTIVE_REGION = "0"
+# VECOPS_THREAD_POOL_SPIN_COUNT = "0"
+# OMP_WAIT_POLICY = "PASSIVE"
+# GOMP_SPINCOUNT = "0"
+
+[log]
+# Enabled log channels. Supported channels include info, time, and debug.
+channels = ["time", "info"]
+# Trace output directory. The default is paths.output/_trace.
+# trace_output = "./output/template/_trace"
+
+[precision]
+# Scaled-dot-product attention implementation: math | flash.
+sdpa = "flash"
+# Main diffusion precision: fp32 | bf16.
+diffusion = "bf16"
+
+[native]
+# Native acceleration implementation: vecops | none. cpp is a deprecated alias.
+impl = "none"
+# Native operator selection. Use ["all"], or select from the following names;
+# "all" cannot be combined with individual entries:
+# linear, evoformer_transition_block, msa_attention, outer_product_mean,
+# grid_self_attn, triangle_multiplication, evoformer_single_act_update,
+# diffusion_transition_block, diffusion_self_attention,
+# diffusion_cross_attention.
+ops = ["all"]
+# Route ATen matmul/einsum through vecops. This is commonly enabled on
+# 920F/aarch64 and disabled on x86.
+matmul_dispatch = false
+# Reuse grid-self-attention index mappings.
+gsa_index_reuse = true
+
+[native.sparse_attention]
+# Sparse-attention sampling parameters. Keep the tuned defaults unless testing
+# a deliberate accuracy/performance tradeoff.
+num_samples = 16
+num_rand_blocks = 5
+t_prob = 0.90
+tr_prob = 0.95
+u_prob = 0.02
+
+[model]
+# Keys in this section map directly to absl flags in sparsefold.cli.predict.
+# Write `flag_name = TOML value` without the leading `--`.
+#
+# The launcher owns the following flags; do not set them in [model]:
+#   json_path/input_dir  <- input_name + paths.input
+#   output_dir           <- paths.output
+#   model_dir            <- paths.model
+#   db_dir               <- paths.database
+#   dist/dist_backend    <- resolved world size + launch.backend
+
+# --------------------------- Device and stages ---------------------------
+# true selects CPU inference; false selects CUDA inference.
+use_cpu = true
+# Run the data pipeline. Set false when the input JSON already contains the
+# required MSA and template data.
+run_data_pipeline = false
+# Run model inference. Data pipeline and inference may be split across runs,
+# but they cannot both be false in the same invocation.
+run_inference = true
+# Logical GPU index for CUDA inference. CUDA_VISIBLE_DEVICES filtering is
+# applied before this zero-based index is interpreted.
+# gpu_device = 0
+# Permit writing into a non-empty output directory. This is useful when data
+# preparation and inference are run separately into the same location.
+# force_output_dir = false
+
+# ------------------------ Core inference settings ------------------------
+# Strictly increasing token buckets. Inputs larger than the final bucket create
+# a bucket at their exact token count. The list-flag parser (DEFINE_list) uses strings; the model entry
+# converts them to integers before inference.
+# buckets = [
+#   "256", "512", "768", "1024", "1280", "1536", "2048",
+#   "2560", "3072", "3584", "4096", "4608", "5120",
+# ]
+# Number of trunk recycle iterations. More recycles increase runtime and also
+# increase loop-weighted access counts used by the memory planner.
+num_recycles = 10
+# Diffusion samples generated for each seed.
+num_diffusion_samples = 5
+# Optional number of seeds. When set, the input JSON must contain exactly one
+# seed, which is expanded into this many sequential seeds.
+# num_seeds = 1
+# Save final single and pair embeddings. Pair embeddings require roughly
+# num_tokens^2 * 128 * 2 bytes and can create very large output files.
+# save_embeddings = false
+# Save the final distogram, requiring roughly num_tokens^2 * 64 * 2 bytes.
+# save_distogram = false
+
+# ---------------- Native precompile and HBM memory planner ---------------
+# Collect and batch-compile native operator requests. The tensor memory planner
+# requires this option.
+# precompile = false
+# false captures with FakeTensor; true executes supplied real tensors while
+# tracing. The HBM planner and distributed Kutacc graph capture should use false.
+# precompile_use_real_tensors = false
+# Maximum number of native compilation requests issued concurrently. Reduce it
+# on a busy shared machine.
+# precompile_parallelism = 8
+# Exit after precompilation instead of running inference. Requires precompile.
+# precompile_only = false
+# Optional path for the captured framework-neutral execution graph JSON.
+# precompile_graph_path = "./output/precompile_graph.json"
+
+# Per-process HBM fast-arena budget in MiB. 0 disables tensor memory planning.
+# A 920F has a 4 GiB HBM node per CPU node; 3072 is the recommended budget.
+# Free node-local HugeTLB pages are included in capacity admission.
+# memory_plan_fast_mib = 0
+# Per-process managed DDR slow-arena limit in MiB.
+# memory_plan_slow_mib = 65536
+# Optional generated memory-plan cache. Use a new file when graph shapes or
+# memory capacities change.
+# memory_plan_path = "./cache/memory_plan.json"
+# Allow the planned fast arena to fall back to default memory when HBM fails.
+# memory_plan_allow_fast_fallback = false
+# Prefer a mixed HugeTLB/THP backing for planner arenas. false forces ordinary
+# pages and disables THP advice.
+# memory_plan_large_pages = true
+# Replay eligible empty/empty_like temporary allocations from one planned peak
+# arena. This currently requires runtime.compile=false.
+# memory_plan_factory_replay = false
+# Place planner-selected read-only model state in HBM.
+# memory_plan_state_replay = false
+# Minimum individual storage size, in MiB, eligible for HBM placement. 0 keeps
+# only the internal page-sized lower bound.
+# memory_plan_min_fast_mib = 0
+# Minimum loop-weighted access count eligible for HBM placement.
+# memory_plan_min_reuse = 1.0
+# Optional measured bandwidths in MiB/s. 0 uses discovered topology values.
+# memory_plan_fast_bandwidth_mib_s = 0.0
+# memory_plan_slow_bandwidth_mib_s = 0.0
+# memory_plan_transfer_bandwidth_mib_s = 0.0
+
+# ------------------------- vecops workspace arena ------------------------
+# Per-process high-bandwidth workspace arena in MiB. 0 disables the workspace
+# memory session.
+# vecops_workspace_fast_mib = 0
+# Default-memory workspace arena in MiB. 0 uses the fast-arena size.
+# vecops_workspace_slow_mib = 0
+# Dense vecops CPU domain. -1 freezes the current affinity domain when the
+# workspace session is created.
+# vecops_workspace_domain = -1
+# Continue with a zero-sized fast arena when workspace HBM is unavailable.
+# vecops_workspace_fast_fallback = true
+# Prefer HugeTLB/THP for vecops workspace arenas.
+# vecops_large_pages = true
+
+# ----------------------------- Data pipeline -----------------------------
+# External tool paths. They are discovered through PATH by default; set an
+# explicit path only when discovery is insufficient.
+# jackhmmer_binary_path = "/usr/bin/jackhmmer"
+# nhmmer_binary_path = "/usr/bin/nhmmer"
+# hmmalign_binary_path = "/usr/bin/hmmalign"
+# hmmsearch_binary_path = "/usr/bin/hmmsearch"
+# hmmbuild_binary_path = "/usr/bin/hmmbuild"
+
+# Database paths may contain ${DB_DIR}, resolved against paths.database.
+# small_bfd_database_path = "${DB_DIR}/bfd-first_non_consensus_sequences.fasta"
+# mgnify_database_path = "${DB_DIR}/mgy_clusters_2022_05.fa"
+# uniprot_cluster_annot_database_path = "${DB_DIR}/uniprot_all_2021_04.fa"
+# uniref90_database_path = "${DB_DIR}/uniref90_2022_05.fa"
+# ntrna_database_path = "${DB_DIR}/nt_rna_2023_02_23_clust_seq_id_90_cov_80_rep_seq.fasta"
+# rfam_database_path = "${DB_DIR}/rfam_14_9_clust_seq_id_90_cov_80_rep_seq.fasta"
+# rna_central_database_path = "${DB_DIR}/rnacentral_active_seq_id_90_cov_80_linclust.fasta"
+# pdb_database_path = "${DB_DIR}/mmcif_files"
+# seqres_database_path = "${DB_DIR}/pdb_seqres_2022_09_28.fasta"
+
+# Explicit Z-values for sharded databases. Leave unset for ordinary databases.
+# Protein database Z-values are sequence counts; RNA values are megabases.
+# small_bfd_z_value = 123456
+# mgnify_z_value = 123456
+# uniprot_cluster_annot_z_value = 123456
+# uniref90_z_value = 123456
+# ntrna_z_value = 123456.0
+# rfam_z_value = 123456.0
+# rna_central_z_value = 123456.0
+
+# CPUs per Jackhmmer/Nhmmer instance. The program default is
+# min(current-affinity CPU count, 8).
+# jackhmmer_n_cpu = 8
+# nhmmer_n_cpu = 8
+# Maximum database shards searched concurrently. When unset, one tool instance
+# is launched per shard.
+# jackhmmer_max_parallel_shards = 4
+# nhmmer_max_parallel_shards = 4
+# Deduplicate unpaired MSA entries against paired MSA entries. Disable this when
+# manually crafted pairing in custom MSA data must be preserved exactly.
+# resolve_msa_overlaps = true
+# Latest allowed template release date in YYYY-MM-DD format.
+# max_template_date = "2021-09-30"
+# Optional maximum RDKit conformer-search iterations.
+# conformer_max_iterations = 1000
+
+# Explicit supported official AF3 source pin; changes need a reviewed adapter profile.
+# af3_revision = "<supported revision>"
+# Normally omit this field: its default comes from integrations/af3/compatibility.py.
+# af3_source_root = "/path/to/official/alphafold3"

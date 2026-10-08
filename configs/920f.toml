@@ -1,0 +1,22 @@
+# SPDX-FileCopyrightText: 2026 HenryRenYz
+# SPDX-License-Identifier: MIT
+
+# Experimental ARM 920F profile with the HBM/DDR tensor planner.
+# This profile has not completed full SparseFold integration validation.
+# Configure the SME compiler, bridge compiler, and Kutacc installation locally;
+# this file does not assume a user's home directory or an installed MPI stack.
+extends = "native_cpu.toml"
+[paths]
+output = "./outputs/920f"
+[native]
+matmul_dispatch = true
+[model]
+precompile_use_real_tensors = false
+memory_plan_fast_mib = 3072
+memory_plan_slow_mib = 65536
+memory_plan_state_replay = true
+[launch]
+backend = "kutacc"
+[affinity]
+mode = "numa"
+mem_policy = "local"

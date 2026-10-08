@@ -1,0 +1,8 @@
+# SPDX-FileCopyrightText: 2026 HenryRenYz
+# SPDX-License-Identifier: MIT
+
+# Single-process x86 native CPU profile; requires AMX and BF16 support.
+# Optional allocators/OpenMP settings belong in a local override.
+extends = "native_cpu.toml"
+[paths]
+output = "./outputs/x86"

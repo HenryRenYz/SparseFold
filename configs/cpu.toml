@@ -1,0 +1,38 @@
+# SPDX-FileCopyrightText: 2026 HenryRenYz
+# SPDX-License-Identifier: MIT
+
+# Portable single-process CPU inference with the Torch backend.
+# Create inputs/example.json and set model.af3_source_root before running.
+input_name = "example"
+[paths]
+input = "./inputs"
+model = "./models"
+output = "./outputs/cpu"
+[launch]
+nproc = 1
+backend = "gloo"
+[affinity]
+mode = "numa"
+thread_pin = "none"
+[runtime]
+threads = 0
+malloc = "default"
+omp = "default"
+compile = false
+sharding = true
+[runtime.env]
+PYTHONNOUSERSITE = "1"
+JAX_PLATFORMS = "cpu"
+[precision]
+sdpa = "math"
+diffusion = "bf16"
+[native]
+impl = "none"
+[model]
+use_cpu = true
+run_data_pipeline = false
+run_inference = true
+num_recycles = 10
+num_diffusion_samples = 5
+# Supply this in a local config or with --set; retain the official Git checkout.
+# af3_source_root = "/path/to/official-alphafold3"

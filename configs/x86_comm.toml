@@ -1,0 +1,15 @@
+# SPDX-FileCopyrightText: 2026 HenryRenYz
+# SPDX-License-Identifier: MIT
+
+# Experimental two-process Gloo profile; full distributed inference is untested.
+# Requires at least two visible CPU NUMA nodes. On a single-NUMA machine,
+# configure explicit, disjoint physical-core lists in a local override.
+extends = "native_cpu.toml"
+[paths]
+output = "./outputs/x86-comm"
+[launch]
+nproc = 2
+backend = "gloo"
+master_port = 29620
+[affinity]
+mode = "numa"

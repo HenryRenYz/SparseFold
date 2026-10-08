@@ -1,0 +1,25 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+*.egg-info/
+build/
+dist/
+.venv/
+cache/
+outputs/
+output/
+validation-results/
+*.bin
+*.bin.zst
+*.pt
+*.pth
+*.safetensors
+*.npz
+*.log
+
+# User data and independently installed external source trees.
+inputs/
+models/
+databases/
+references/
+deps/
