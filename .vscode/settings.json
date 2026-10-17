@@ -1,0 +1,20 @@
+{
+  "files.watcherExclude": {
+    "**/build*/**": true,
+    "**/cmake-build*/**": true,
+    "**/dist/**": true,
+    "**/*.egg-info/**": true,
+    "**/.venv/**": true,
+    "**/__pycache__/**": true,
+    "**/.pytest_cache/**": true,
+    "**/cache/**": true,
+    "**/output/**": true,
+    "**/outputs/**": true,
+    "**/validation-results/**": true,
+    "**/inputs/**": true,
+    "**/models/**": true,
+    "**/databases/**": true,
+    "**/references/**": true,
+    "**/deps/**": true
+  }
+}
